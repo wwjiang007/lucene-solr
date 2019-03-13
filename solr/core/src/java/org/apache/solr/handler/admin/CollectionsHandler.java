@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
@@ -45,12 +47,13 @@ import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.RequestSyncShard;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
-import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerSolrResponse;
 import org.apache.solr.cloud.OverseerTaskQueue;
 import org.apache.solr.cloud.OverseerTaskQueue.QueueEvent;
+import org.apache.solr.cloud.ZkController.NotInClusterStateException;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.cloud.ZkShardTerms;
+import org.apache.solr.cloud.api.collections.RoutedAlias;
 import org.apache.solr.cloud.overseer.SliceMutator;
 import org.apache.solr.cloud.rule.ReplicaAssigner;
 import org.apache.solr.cloud.rule.Rule;
@@ -114,16 +117,13 @@ import static org.apache.solr.cloud.api.collections.OverseerCollectionMessageHan
 import static org.apache.solr.cloud.api.collections.OverseerCollectionMessageHandler.REQUESTID;
 import static org.apache.solr.cloud.api.collections.OverseerCollectionMessageHandler.SHARDS_PROP;
 import static org.apache.solr.cloud.api.collections.OverseerCollectionMessageHandler.SHARD_UNIQUE;
-import static org.apache.solr.cloud.api.collections.TimeRoutedAlias.CREATE_COLLECTION_PREFIX;
-import static org.apache.solr.cloud.api.collections.TimeRoutedAlias.OPTIONAL_ROUTER_PARAMS;
-import static org.apache.solr.cloud.api.collections.TimeRoutedAlias.REQUIRED_ROUTER_PARAMS;
+import static org.apache.solr.cloud.api.collections.RoutedAlias.CREATE_COLLECTION_PREFIX;
 import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.common.cloud.DocCollection.DOC_ROUTER;
 import static org.apache.solr.common.cloud.DocCollection.RULE;
 import static org.apache.solr.common.cloud.DocCollection.SNITCH;
 import static org.apache.solr.common.cloud.DocCollection.STATE_FORMAT;
 import static org.apache.solr.common.cloud.ZkStateReader.AUTO_ADD_REPLICAS;
-import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_DEF;
 import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
 import static org.apache.solr.common.cloud.ZkStateReader.NRT_REPLICAS;
@@ -144,6 +144,8 @@ import static org.apache.solr.common.params.CollectionAdminParams.WITH_COLLECTIO
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.*;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
 import static org.apache.solr.common.params.CommonAdminParams.IN_PLACE_MOVE;
+import static org.apache.solr.common.params.CommonAdminParams.NUM_SUB_SHARDS;
+import static org.apache.solr.common.params.CommonAdminParams.SPLIT_FUZZ;
 import static org.apache.solr.common.params.CommonAdminParams.SPLIT_METHOD;
 import static org.apache.solr.common.params.CommonAdminParams.WAIT_FOR_FINAL_STATE;
 import static org.apache.solr.common.params.CommonParams.NAME;
@@ -213,7 +215,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
   protected void copyFromClusterProp(Map<String, Object> props, String prop) throws IOException {
     if (props.get(prop) != null) return;//if it's already specified , return
     Object defVal = new ClusterProperties(coreContainer.getZkController().getZkStateReader().getZkClient())
-        .getClusterProperty(ImmutableList.of(COLLECTION_DEF, prop), null);
+        .getClusterProperty(ImmutableList.of(CollectionAdminParams.DEFAULTS, CollectionAdminParams.COLLECTION, prop), null);
     if (defVal != null) props.put(prop, String.valueOf(defVal));
   }
 
@@ -285,7 +287,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
 
     } else {
       // submits and doesn't wait for anything (no response)
-      Overseer.getStateUpdateQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
+      coreContainer.getZkController().getOverseer().offerStateUpdate(Utils.toJSON(props));
     }
 
   }
@@ -457,13 +459,6 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
   }
 
   public enum CollectionOperation implements CollectionOp {
-    /**
-     * very simple currently, you can pass a template collection, and the new collection is created on
-     * every node the template collection is on
-     * there is a lot more to add - you should also be able to create with an explicit server list
-     * we might also want to think about error handling (add the request to a zk queue and involve overseer?)
-     * as well as specific replicas= options
-     */
     CREATE_OP(CREATE, (req, rsp, h) -> {
       Map<String, Object> props = copy(req.getParams().required(), null, NAME);
       props.put("fromApi", "true");
@@ -525,6 +520,22 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       return copyPropertiesWithPrefix(req.getParams(), props, "router.");
 
     }),
+    COLSTATUS_OP(COLSTATUS, (req, rsp, h) -> {
+      Map<String, Object> props = copy(req.getParams(), null,
+          COLLECTION_PROP,
+          ColStatus.CORE_INFO_PROP,
+          ColStatus.SEGMENTS_PROP,
+          ColStatus.FIELD_INFO_PROP,
+          ColStatus.SIZE_INFO_PROP);
+      // make sure we can get the name if there's "name" but not "collection"
+      if (props.containsKey(CoreAdminParams.NAME) && !props.containsKey(COLLECTION_PROP)) {
+        props.put(COLLECTION_PROP, props.get(CoreAdminParams.NAME));
+      }
+      new ColStatus(h.coreContainer.getUpdateShardHandler().getDefaultHttpClient(),
+          h.coreContainer.getZkController().getZkStateReader().getClusterState(), new ZkNodeProps(props))
+          .getColStatus(rsp.getValues());
+      return null;
+    }),
     DELETE_OP(DELETE, (req, rsp, h) -> copy(req.getParams().required(), null, NAME)),
 
     RELOAD_OP(RELOAD, (req, rsp, h) -> copy(req.getParams().required(), null, NAME)),
@@ -556,20 +567,39 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       String alias = req.getParams().get(NAME);
       SolrIdentifierValidator.validateAliasName(alias);
       String collections = req.getParams().get("collections");
-      Map<String, Object> result = copy(req.getParams(), null, REQUIRED_ROUTER_PARAMS);
-      copy(req.getParams(), result, OPTIONAL_ROUTER_PARAMS);
+      RoutedAlias routedAlias = null;
+      Exception ex = null;
+      try {
+        // note that RA specific validation occurs here.
+        routedAlias = RoutedAlias.fromProps(alias, req.getParams().toMap(new HashMap<>()));
+      } catch (SolrException e) {
+        // we'll throw this later if we are in fact creating a routed alias.
+        ex = e;
+      }
       if (collections != null) {
-        if (result.size() > 1) { // (NAME should be there, and if it's not we will fail below)
-          throw new SolrException(BAD_REQUEST, "Collections cannot be specified when creating a time routed alias.");
+        if (routedAlias != null) {
+          throw new SolrException(BAD_REQUEST, "Collections cannot be specified when creating a routed alias.");
+        } else {
+          //////////////////////////////////////
+          // Regular alias creation indicated //
+          //////////////////////////////////////
+          return copy(req.getParams().required(), null, NAME, "collections");
         }
-        // regular alias creation...
-        return copy(req.getParams().required(), null, NAME, "collections");
       }
 
-      // Ok so we are creating a time routed alias from here
+      /////////////////////////////////////////////////
+      // We are creating a routed alias from here on //
+      /////////////////////////////////////////////////
 
-      // for validation....
-      copy(req.getParams().required(), null, REQUIRED_ROUTER_PARAMS);
+      // If our prior creation attempt had issues expose them now.
+      if (ex != null) {
+        throw ex;
+      }
+
+      // Now filter out just the parameters we care about from the request
+      Map<String, Object> result = copy(req.getParams(), null, routedAlias.getRequiredParams());
+      copy(req.getParams(), result, routedAlias.getOptionalParams());
+
       ModifiableSolrParams createCollParams = new ModifiableSolrParams(); // without prefix
 
       // add to result params that start with "create-collection.".
@@ -646,6 +676,8 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       String shard = req.getParams().get(SHARD_ID_PROP);
       String rangesStr = req.getParams().get(CoreAdminParams.RANGES);
       String splitKey = req.getParams().get("split.key");
+      String numSubShards = req.getParams().get(NUM_SUB_SHARDS);
+      String fuzz = req.getParams().get(SPLIT_FUZZ);
 
       if (splitKey == null && shard == null) {
         throw new SolrException(ErrorCode.BAD_REQUEST, "At least one of shard, or split.key should be specified.");
@@ -658,6 +690,14 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
         throw new SolrException(ErrorCode.BAD_REQUEST,
             "Only one of 'ranges' or 'split.key' should be specified");
       }
+      if (numSubShards != null && (splitKey != null || rangesStr != null)) {
+        throw new SolrException(ErrorCode.BAD_REQUEST,
+            "numSubShards can not be specified with split.key or ranges parameters");
+      }
+      if (fuzz != null && (splitKey != null || rangesStr != null)) {
+        throw new SolrException(ErrorCode.BAD_REQUEST,
+            "fuzz can not be specified with split.key or ranges parameters");
+      }
 
       Map<String, Object> map = copy(req.getParams(), null,
           COLLECTION_PROP,
@@ -666,7 +706,9 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
           CoreAdminParams.RANGES,
           WAIT_FOR_FINAL_STATE,
           TIMING,
-          SPLIT_METHOD);
+          SPLIT_METHOD,
+          NUM_SUB_SHARDS,
+          SPLIT_FUZZ);
       return copyPropertiesWithPrefix(req.getParams(), map, COLL_PROP_PREFIX);
     }),
     DELETESHARD_OP(DELETESHARD, (req, rsp, h) -> {
@@ -928,6 +970,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     }),
     MODIFYCOLLECTION_OP(MODIFYCOLLECTION, (req, rsp, h) -> {
       Map<String, Object> m = copy(req.getParams(), null, CollectionAdminRequest.MODIFIABLE_COLLECTION_PROPERTIES);
+      copyPropertiesWithPrefix(req.getParams(), m, COLL_PROP_PREFIX);
       if (m.isEmpty())  {
         throw new SolrException(ErrorCode.BAD_REQUEST,
             formatString("no supported values provided {0}", CollectionAdminRequest.MODIFIABLE_COLLECTION_PROPERTIES.toString()));
@@ -935,7 +978,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       copy(req.getParams().required(), m, COLLECTION_PROP);
       addMapObject(m, RULE);
       addMapObject(m, SNITCH);
-      for (String prop : CollectionAdminRequest.MODIFIABLE_COLLECTION_PROPERTIES) {
+      for (String prop : m.keySet()) {
         if ("".equals(m.get(prop)))  {
           // set to an empty string is equivalent to removing the property, see SOLR-12507
           m.put(prop, null);
@@ -1201,15 +1244,6 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
             "The shard already has an active leader. Force leader is not applicable. State: " + slice);
       }
 
-      // Clear out any LIR state
-      String lirPath = handler.coreContainer.getZkController().getLeaderInitiatedRecoveryZnodePath(collectionName, sliceId);
-      if (handler.coreContainer.getZkController().getZkClient().exists(lirPath, true)) {
-        StringBuilder sb = new StringBuilder();
-        handler.coreContainer.getZkController().getZkClient().printLayout(lirPath, 4, sb);
-        log.info("Cleaning out LIR data, which was: {}", sb);
-        handler.coreContainer.getZkController().getZkClient().clean(lirPath);
-      }
-
       final Set<String> liveNodes = clusterState.getLiveNodes();
       List<Replica> liveReplicas = slice.getReplicas().stream()
           .filter(rep -> liveNodes.contains(rep.getNodeName())).collect(Collectors.toList());
@@ -1258,64 +1292,62 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       log.info("Not waiting for active collection due to exception: " + createCollResponse.getResponse().get("exception"));
       return;
     }
-    
+
+    int replicaFailCount;
     if (createCollResponse.getResponse().get("failure") != null) {
-      // TODO: we should not wait for Replicas we know failed
+      replicaFailCount = ((NamedList) createCollResponse.getResponse().get("failure")).size();
+    } else {
+      replicaFailCount = 0;
     }
-    
-    String replicaNotAlive = null;
-    String replicaState = null;
-    String nodeNotLive = null;
 
     CloudConfig ccfg = cc.getConfig().getCloudConfig();
-    Integer numRetries = ccfg.getCreateCollectionWaitTimeTillActive(); // this config is actually # seconds, not # tries
+    Integer seconds = ccfg.getCreateCollectionWaitTimeTillActive();
     Boolean checkLeaderOnly = ccfg.isCreateCollectionCheckLeaderActive();
-    log.info("Wait for new collection to be active for at most " + numRetries + " seconds. Check all shard "
+    log.info("Wait for new collection to be active for at most " + seconds + " seconds. Check all shard "
         + (checkLeaderOnly ? "leaders" : "replicas"));
-    ZkStateReader zkStateReader = cc.getZkController().getZkStateReader();
-    for (int i = 0; i < numRetries; i++) {
-      ClusterState clusterState = zkStateReader.getClusterState();
 
-      final DocCollection docCollection = clusterState.getCollectionOrNull(collectionName);
-      
-      if (docCollection != null && docCollection.getSlices() != null) {
-        Collection<Slice> shards = docCollection.getSlices();
-        replicaNotAlive = null;
-        for (Slice shard : shards) {
-          Collection<Replica> replicas;
-          if (!checkLeaderOnly) replicas = shard.getReplicas();
-          else {
-            replicas = new ArrayList<Replica>();
-            replicas.add(shard.getLeader());
-          }
-          for (Replica replica : replicas) {
-            String state = replica.getStr(ZkStateReader.STATE_PROP);
-            log.debug("Checking replica status, collection={} replica={} state={}", collectionName,
-                replica.getCoreUrl(), state);
-            if (!clusterState.liveNodesContain(replica.getNodeName())
-                || !state.equals(Replica.State.ACTIVE.toString())) {
-              replicaNotAlive = replica.getCoreUrl();
-              nodeNotLive = replica.getNodeName();
-              replicaState = state;
-              break;
-            }
-          }
-          if (replicaNotAlive != null) break;
+    try {
+      cc.getZkController().getZkStateReader().waitForState(collectionName, seconds, TimeUnit.SECONDS, (n, c) -> {
+
+        if (c == null) {
+          // the collection was not created, don't wait
+          return true;
         }
 
-        if (replicaNotAlive == null) return;
-      }
-      Thread.sleep(1000); // thus numRetries is roughly number of seconds
+        if (c.getSlices() != null) {
+          Collection<Slice> shards = c.getSlices();
+          int replicaNotAliveCnt = 0;
+          for (Slice shard : shards) {
+            Collection<Replica> replicas;
+            if (!checkLeaderOnly) replicas = shard.getReplicas();
+            else {
+              replicas = new ArrayList<Replica>();
+              replicas.add(shard.getLeader());
+            }
+            for (Replica replica : replicas) {
+              String state = replica.getStr(ZkStateReader.STATE_PROP);
+              log.debug("Checking replica status, collection={} replica={} state={}", collectionName,
+                  replica.getCoreUrl(), state);
+              if (!n.contains(replica.getNodeName())
+                  || !state.equals(Replica.State.ACTIVE.toString())) {
+                replicaNotAliveCnt++;
+                return false;
+              }
+            }
+          }
+
+          if ((replicaNotAliveCnt == 0) || (replicaNotAliveCnt <= replicaFailCount)) return true;
+        }
+        return false;
+      });
+    } catch (TimeoutException | InterruptedException e) {
+
+      String  error = "Timeout waiting for active collection " + collectionName + " with timeout=" + seconds;
+      throw new NotInClusterStateException(ErrorCode.SERVER_ERROR, error);
     }
-    if (nodeNotLive != null && replicaState != null) {
-      log.error("Timed out waiting for new collection's replicas to become ACTIVE "
-              + (replicaState.equals(Replica.State.ACTIVE.toString()) ? "node " + nodeNotLive + " is not live"
-                  : "replica " + replicaNotAlive + " is in state of " + replicaState.toString()) + " with timeout=" + numRetries);
-    } else {
-      log.error("Timed out waiting for new collection's replicas to become ACTIVE with timeout=" + numRetries);
-    }
+
   }
-  
+
   public static void verifyRuleParams(CoreContainer cc, Map<String, Object> m) {
     List l = (List) m.get(RULE);
     if (l != null) {
@@ -1351,7 +1383,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     }
     return props;
   }
-  
+
   private static void verifyShardsParam(String shardsParam) {
     for (String shard : shardsParam.split(",")) {
       SolrIdentifierValidator.validateShardName(shard);

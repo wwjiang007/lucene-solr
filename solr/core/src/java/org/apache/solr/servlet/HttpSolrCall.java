@@ -133,7 +133,7 @@ import static org.apache.solr.servlet.SolrDispatchFilter.Action.RETURN;
 public class HttpSolrCall {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  static final Random random;
+  public static final Random random;
   static {
     // We try to make things reproducible in the context of our tests by initializing the random instance
     // based on the current seed
@@ -496,6 +496,7 @@ public class HttpSolrCall {
           handleAdminRequest();
           return RETURN;
         case REMOTEQUERY:
+          SolrRequestInfo.setRequestInfo(new SolrRequestInfo(req, new SolrQueryResponse()));
           remoteQuery(coreUrl + path, resp);
           return RETURN;
         case PROCESS:
@@ -574,6 +575,7 @@ public class HttpSolrCall {
     }
   }
 
+  //TODO using Http2Client
   private void remoteQuery(String coreUrl, HttpServletResponse resp) throws IOException {
     HttpRequestBase method = null;
     HttpEntity httpEntity = null;
@@ -722,12 +724,20 @@ public class HttpSolrCall {
     writeResponse(solrResp, respWriter, Method.getMethod(req.getMethod()));
   }
 
+  /**
+   * Returns {@link QueryResponseWriter} to be used.
+   * When {@link CommonParams#WT} not specified in the request or specified value doesn't have
+   * corresponding {@link QueryResponseWriter} then, returns the default query response writer
+   * Note: This method must not return null
+   */
   protected QueryResponseWriter getResponseWriter() {
-    if (core != null) return core.getQueryResponseWriter(solrReq);
-    QueryResponseWriter respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get(solrReq.getParams().get(CommonParams.WT));
-    if (respWriter == null) respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get("standard");
-    return respWriter;
-
+    String wt = solrReq.getParams().get(CommonParams.WT);
+    if (core != null) {
+      return core.getQueryResponseWriter(wt);
+    } else {
+      return SolrCore.DEFAULT_RESPONSE_WRITERS.getOrDefault(wt,
+          SolrCore.DEFAULT_RESPONSE_WRITERS.get("standard"));
+    }
   }
 
   protected void handleAdmin(SolrQueryResponse solrResp) {
@@ -877,7 +887,7 @@ public class HttpSolrCall {
     }
   }
 
-  private String getRemotCoreUrl(String collectionName, String origCorename) {
+  protected String getRemotCoreUrl(String collectionName, String origCorename) {
     ClusterState clusterState = cores.getZkController().getClusterState();
     final DocCollection docCollection = clusterState.getCollectionOrNull(collectionName);
     Slice[] slices = (docCollection != null) ? docCollection.getActiveSlicesArr() : null;
@@ -885,9 +895,8 @@ public class HttpSolrCall {
     boolean byCoreName = false;
 
     if (slices == null) {
-      activeSlices = new ArrayList<>();
-      // look by core name
       byCoreName = true;
+      activeSlices = new ArrayList<>();
       getSlicesForCollections(clusterState, activeSlices, true);
       if (activeSlices.isEmpty()) {
         getSlicesForCollections(clusterState, activeSlices, false);
@@ -930,7 +939,7 @@ public class HttpSolrCall {
         if (!activeReplicas || (liveNodes.contains(replica.getNodeName())
             && replica.getState() == Replica.State.ACTIVE)) {
 
-          if (byCoreName && !collectionName.equals(replica.getStr(CORE_NAME_PROP))) {
+          if (byCoreName && !origCorename.equals(replica.getStr(CORE_NAME_PROP))) {
             // if it's by core name, make sure they match
             continue;
           }

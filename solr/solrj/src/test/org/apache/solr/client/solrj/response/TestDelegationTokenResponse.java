@@ -22,7 +22,7 @@ import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.solr.SolrTestCase;
 import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.request.DelegationTokenRequest;
 import org.apache.solr.common.SolrException;
@@ -32,7 +32,7 @@ import org.junit.Test;
 import org.noggit.CharArr;
 import org.noggit.JSONWriter;
 
-public class TestDelegationTokenResponse extends LuceneTestCase {
+public class TestDelegationTokenResponse extends SolrTestCase {
 
   private void delegationTokenResponse(DelegationTokenRequest request,
       DelegationTokenResponse response, String responseBody) throws Exception {
@@ -62,7 +62,7 @@ public class TestDelegationTokenResponse extends LuceneTestCase {
   }
 
   @Test
-  @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // added 20-Sep-2018
+  // commented out on: 24-Dec-2018   @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // added 20-Sep-2018
   public void testGetResponse() throws Exception {
     DelegationTokenRequest.Get getRequest = new DelegationTokenRequest.Get();
     DelegationTokenResponse.Get getResponse = new DelegationTokenResponse.Get();
@@ -98,7 +98,7 @@ public class TestDelegationTokenResponse extends LuceneTestCase {
   }
 
   @Test
-  @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // added 20-Sep-2018
+  // commented out on: 24-Dec-2018   @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // added 20-Sep-2018
   public void testRenewResponse() throws Exception {
     DelegationTokenRequest.Renew renewRequest = new DelegationTokenRequest.Renew("token");
     DelegationTokenResponse.Renew renewResponse = new DelegationTokenResponse.Renew();

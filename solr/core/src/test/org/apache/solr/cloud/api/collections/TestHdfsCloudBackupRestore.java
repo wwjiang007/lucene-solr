@@ -26,10 +26,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
+
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants.SafeModeAction;
@@ -37,6 +40,7 @@ import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.hdfs.HdfsTestUtil;
 import org.apache.solr.common.cloud.DocCollection;
+import org.apache.solr.common.cloud.ZkConfigManager;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.backup.BackupManager;
@@ -61,8 +65,7 @@ import static org.apache.solr.core.backup.BackupManager.ZK_STATE_DIR;
 @ThreadLeakFilters(defaultFilters = true, filters = {
     BadHdfsThreadsFilter.class // hdfs currently leaks thread(s)
 })
-//05-Jul-2018  @LuceneTestCase.BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // 04-May-2018
-//commented 23-AUG-2018  @LuceneTestCase.BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // 2-Aug-2018
+@AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/SOLR-12866")
 public class TestHdfsCloudBackupRestore extends AbstractCloudBackupRestoreTestCase {
   public static final String SOLR_XML = "<solr>\n" +
       "\n" +
@@ -136,24 +139,29 @@ public class TestHdfsCloudBackupRestore extends AbstractCloudBackupRestoreTestCa
 
     configureCluster(NUM_SHARDS)// nodes
     .addConfig("conf1", TEST_PATH().resolve("configsets").resolve("cloud-minimal").resolve("conf"))
+    .addConfig("confFaulty", TEST_PATH().resolve("configsets").resolve("cloud-minimal").resolve("conf"))
     .withSolrXml(SOLR_XML)
     .configure();
+    cluster.getZkClient().delete(ZkConfigManager.CONFIGS_ZKNODE + Path.SEPARATOR + "confFaulty" + Path.SEPARATOR + "solrconfig.xml", -1, true);
   }
 
   @AfterClass
   public static void teardownClass() throws Exception {
-    System.clearProperty("solr.hdfs.home");
-    System.clearProperty("solr.hdfs.default.backup.path");
-    System.clearProperty("test.build.data");
-    System.clearProperty("test.cache.data");
     IOUtils.closeQuietly(fs);
     fs = null;
-    HdfsTestUtil.teardownClass(dfsCluster);
-    dfsCluster = null;
+    try {
+      HdfsTestUtil.teardownClass(dfsCluster);
+    } finally {
+      dfsCluster = null;
+      System.clearProperty("solr.hdfs.home");
+      System.clearProperty("solr.hdfs.default.backup.path");
+      System.clearProperty("test.build.data");
+      System.clearProperty("test.cache.data");
+    }
   }
 
   @Override
-  public String getCollectionName() {
+  public String getCollectionNamePrefix() {
     return "hdfsbackuprestore";
   }
 
@@ -206,11 +214,10 @@ public class TestHdfsCloudBackupRestore extends AbstractCloudBackupRestoreTestCa
       assertTrue(expected.contains(d));
     }
   }
+
   @Override
   @Test
-  // commented 15-Sep-2018 @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // added 09-Aug-2018
   public void test() throws Exception {
     super.test();
   }
-
-  }
+}

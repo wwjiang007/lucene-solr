@@ -45,8 +45,9 @@ def invalidPatterns = [
   (~$/\$$Id\b/$) : 'svn keyword',
   (~$/\$$Header\b/$) : 'svn keyword',
   (~$/\$$Source\b/$) : 'svn keyword',
-  (~$/^\uFEFF/$) : 'UTF-8 byte order mark'
-];
+  (~$/^\uFEFF/$) : 'UTF-8 byte order mark',
+  (~$/import java\.lang\.\w+;/$) : 'java.lang import is unnecessary'
+]
 
 def baseDir = properties['basedir'];
 def baseDirLen = baseDir.length() + 1;
@@ -73,6 +74,7 @@ def sourceHeaderPattern = ~$/\[source\b.*/$;
 def blockBoundaryPattern = ~$/----\s*/$;
 def blockTitlePattern = ~$/\..*/$;
 def unescapedSymbolPattern = ~$/(?<=[^\\]|^)([-=]>|<[-=])/$; // SOLR-10883
+def extendsLuceneTestCasePattern = ~$/public.*?class.*?extends.*?LuceneTestCase[^\n]*?\n/$;
 
 def isLicense = { matcher, ratDocument ->
   licenseMatcher.reset();
@@ -148,6 +150,7 @@ ant.fileScanner{
     exclude(name: 'lucene/benchmark/temp/**')
     exclude(name: '**/CheckLoggingConfiguration.java')
     exclude(name: 'lucene/tools/src/groovy/check-source-patterns.groovy') // ourselves :-)
+    exclude(name: 'solr/core/src/test/org/apache/hadoop/**')
   }
 }.each{ f ->
   task.log('Scanning file: ' + f, Project.MSG_VERBOSE);
@@ -177,6 +180,14 @@ ant.fileScanner{
     checkLicenseHeaderPrecedes(f, 'package', packagePattern, javaCommentPattern, text, ratDocument);
     if (f.name.contains("Test")) {
       checkMockitoAssume(f, text);
+    }
+
+    if (f.path.substring(baseDirLen).contains("solr/")
+        && f.name.equals("SolrTestCase.java") == false
+        && f.name.equals("TestXmlQParser.java") == false) {
+      if (extendsLuceneTestCasePattern.matcher(text).find()) {
+        reportViolation(f, "Solr test cases should extend SolrTestCase rather than LuceneTestCase");
+      }
     }
   }
   if (f.name.endsWith('.xml') || f.name.endsWith('.xml.template')) {
