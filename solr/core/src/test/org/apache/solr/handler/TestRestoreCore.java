@@ -98,10 +98,14 @@ public class TestRestoreCore extends SolrJettyTestBase {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    masterClient.close();
-    masterClient  = null;
-    masterJetty.stop();
-    masterJetty = null;
+    if (null != masterClient) {
+      masterClient.close();
+      masterClient  = null;
+    }
+    if (null != masterJetty) {
+      masterJetty.stop();
+      masterJetty = null;
+    }
     master = null;
   }
 
@@ -134,8 +138,6 @@ public class TestRestoreCore extends SolrJettyTestBase {
       checkBackupStatus.fetchStatus();
       Thread.sleep(1000);
     }
-
-
 
     int numRestoreTests = nDocs > 0 ? TestUtil.nextInt(random(), 1, 5) : 1;
 
