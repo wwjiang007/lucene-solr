@@ -28,13 +28,11 @@ import org.apache.lucene.spatial.StrategyTestCase;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
 /** Base test harness, ideally for SpatialStrategy impls that have exact results
  * (not grid approximated), hence "not fuzzy".
  */
-@SuppressWarnings("deprecation")
 public abstract class RandomSpatialOpStrategyTestCase extends StrategyTestCase {
 
   //Note: this is partially redundant with StrategyTestCase.runTestQuery & testOperation
@@ -131,7 +129,7 @@ public abstract class RandomSpatialOpStrategyTestCase extends StrategyTestCase {
   protected void preQueryHavoc() {
     if (strategy instanceof RecursivePrefixTreeStrategy) {
       RecursivePrefixTreeStrategy rpts = (RecursivePrefixTreeStrategy) strategy;
-      int scanLevel = randomInt(rpts.getGrid().getMaxLevels());
+      int scanLevel = randomIntBetween(0, rpts.getGrid().getMaxLevels());
       rpts.setPrefixGridScanLevel(scanLevel);
     }
   }

@@ -88,7 +88,6 @@ public class HeatmapFacetCounter {
    * @param facetLevel the target depth (detail) of cells.
    * @param maxCells the maximum number of cells to return. If the cells exceed this count, an
    */
-  @SuppressWarnings("deprecation")
   public static Heatmap calcFacets(PrefixTreeStrategy strategy, IndexReaderContext context, Bits topAcceptDocs,
                                    Shape inputShape, final int facetLevel, int maxCells) throws IOException {
     if (maxCells > (MAX_ROWS_OR_COLUMNS * MAX_ROWS_OR_COLUMNS)) {
@@ -101,7 +100,7 @@ public class HeatmapFacetCounter {
     //First get the rect of the cell at the bottom-left at depth facetLevel
     final SpatialPrefixTree grid = strategy.getGrid();
     final SpatialContext ctx = grid.getSpatialContext();
-    final Point cornerPt = ctx.makePoint(inputRect.getMinX(), inputRect.getMinY());
+    final Point cornerPt = ctx.getShapeFactory().pointXY(inputRect.getMinX(), inputRect.getMinY());
     final CellIterator cellIterator = grid.getTreeCellIterator(cornerPt, facetLevel);
     Cell cornerCell = null;
     while (cellIterator.hasNext()) {
@@ -142,7 +141,7 @@ public class HeatmapFacetCounter {
       heatMaxY = worldRect.getMaxY();
     }
 
-    final Heatmap heatmap = new Heatmap(columns, rows, ctx.makeRectangle(heatMinX, heatMaxX, heatMinY, heatMaxY));
+    final Heatmap heatmap = new Heatmap(columns, rows, ctx.getShapeFactory().rect(heatMinX, heatMaxX, heatMinY, heatMaxY));
     if (topAcceptDocs instanceof Bits.MatchNoBits) {
       return heatmap; // short-circuit
     }

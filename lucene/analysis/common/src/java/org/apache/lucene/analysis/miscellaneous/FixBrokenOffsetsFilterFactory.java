@@ -27,6 +27,7 @@ import org.apache.lucene.analysis.util.TokenFilterFactory;
  * @since 7.0.0
  * @lucene.spi {@value #NAME}
  */
+@Deprecated
 public class FixBrokenOffsetsFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
@@ -37,7 +38,11 @@ public class FixBrokenOffsetsFilterFactory extends TokenFilterFactory {
     super(args);
   }
 
-  @SuppressWarnings("deprecation")
+  /** Default ctor for compatibility with SPI */
+  public FixBrokenOffsetsFilterFactory() {
+    throw defaultCtorException();
+  }
+
   @Override
   public TokenStream create(TokenStream input) {
     return new FixBrokenOffsetsFilter(input);

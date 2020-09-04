@@ -54,8 +54,7 @@ public class TestSolrCloudWithKerberosAlt extends SolrCloudTestCase {
 
   private static final int numShards = 1;
   private static final int numReplicas = 1;
-  private static final int maxShardsPerNode = 1;
-  private static final int nodeCount = (numShards*numReplicas + (maxShardsPerNode-1))/maxShardsPerNode;
+  private static final int nodeCount = numShards*numReplicas;
   private static final String configName = "solrCloudCollectionConfig";
   private static final String collectionName = "testkerberoscollection";
   
@@ -101,7 +100,7 @@ public class TestSolrCloudWithKerberosAlt extends SolrCloudTestCase {
     System.setProperty("solr.kerberos.keytab", keytabFile.getAbsolutePath());
     System.setProperty("authenticationPlugin", "org.apache.solr.security.KerberosPlugin");
     boolean enableDt = random().nextBoolean();
-    log.info("Enable delegation token: " + enableDt);
+    log.info("Enable delegation token: {}", enableDt);
     System.setProperty("solr.kerberos.delegation.token.enabled", Boolean.toString(enableDt));
     // Extracts 127.0.0.1 from HTTP/127.0.0.1@EXAMPLE.COM
     System.setProperty("solr.kerberos.name.rules", "RULE:[1:$1@$0](.*EXAMPLE.COM)s/@.*//"
@@ -126,7 +125,6 @@ public class TestSolrCloudWithKerberosAlt extends SolrCloudTestCase {
   private void testCollectionCreateSearchDelete() throws Exception {
     CloudSolrClient client = cluster.getSolrClient();
     CollectionAdminRequest.createCollection(collectionName, configName, numShards, numReplicas)
-        .setMaxShardsPerNode(maxShardsPerNode)
         .process(client);
 
     cluster.waitForActiveCollection(collectionName, numShards, numShards * numReplicas);
@@ -140,7 +138,7 @@ public class TestSolrCloudWithKerberosAlt extends SolrCloudTestCase {
     CollectionAdminRequest.deleteCollection(collectionName).process(client);
         
     AbstractDistribZkTestBase.waitForCollectionToDisappear
-        (collectionName, client.getZkStateReader(), true, true, 330);
+        (collectionName, client.getZkStateReader(), true, 330);
   }
 
   @Override

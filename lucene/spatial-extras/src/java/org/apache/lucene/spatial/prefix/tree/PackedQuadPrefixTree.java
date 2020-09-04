@@ -62,7 +62,9 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
     @Override
     protected SpatialPrefixTree newSPT() {
       PackedQuadPrefixTree tree = new PackedQuadPrefixTree(ctx, maxLevels != null ? maxLevels : MAX_LEVELS_POSSIBLE);
-      tree.robust = getVersion().onOrAfter(Version.LUCENE_8_3_0);
+      @SuppressWarnings("deprecation")
+      Version lucene830 = Version.LUCENE_8_3_0;
+      tree.robust = getVersion().onOrAfter(lucene830);
       return tree;
     }
   }
@@ -84,12 +86,11 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
     return new PackedQuadCell(0x0L);
   }
 
-  @SuppressWarnings("deprecation")
   @Override
   public Cell getCell(Point p, int level) {
     if (!robust) { // old method
       List<Cell> cells = new ArrayList<>(1);
-      buildNotRobustly(xmid, ymid, 0, cells, 0x0L, ctx.makePoint(p.getX(), p.getY()), level);
+      buildNotRobustly(xmid, ymid, 0, cells, 0x0L, ctx.getShapeFactory().pointXY(p.getX(), p.getY()), level);
       if (!cells.isEmpty()) {
         return cells.get(0);//note cells could be longer if p on edge
       }
@@ -145,7 +146,6 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
     checkBattenbergNotRobustly(QUAD[3], x + w, y - h, level, matches, term, shape, maxLevel);
   }
 
-  @SuppressWarnings("deprecation")
   protected void checkBattenbergNotRobustly(byte quad, double cx, double cy, int level, List<Cell> matches,
                                  long term, Shape shape, int maxLevel) {
     // short-circuit if we find a match for the point (no need to continue recursion)
@@ -154,7 +154,7 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
     double w = levelW[level] / 2;
     double h = levelH[level] / 2;
 
-    SpatialRelation v = shape.relate(ctx.makeRectangle(cx - w, cx + w, cy - h, cy + h));
+    SpatialRelation v = shape.relate(ctx.getShapeFactory().rect(cx - w, cx + w, cy - h, cy + h));
 
     if (SpatialRelation.DISJOINT == v) {
       return;

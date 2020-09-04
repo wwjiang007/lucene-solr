@@ -299,7 +299,7 @@ public class DrillSideways {
     if (executor != null) {  // We have an executor, let use the multi-threaded version
 
       final CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-              new CollectorManager<TopScoreDocCollector, TopDocs>() {
+              new CollectorManager<>() {
 
                 @Override
                 public TopScoreDocCollector newCollector() throws IOException {

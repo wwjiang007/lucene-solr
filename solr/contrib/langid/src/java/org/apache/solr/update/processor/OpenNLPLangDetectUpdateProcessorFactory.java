@@ -60,9 +60,8 @@ public class OpenNLPLangDetectUpdateProcessorFactory extends UpdateRequestProces
   protected SolrParams invariants;
   private SolrResourceLoader solrResourceLoader;
 
-  @SuppressWarnings("rawtypes")
   @Override
-  public void init( NamedList args )
+  public void init( @SuppressWarnings({"rawtypes"})NamedList args )
   {
     if (args != null) {
       Object o;
@@ -108,7 +107,6 @@ public class OpenNLPLangDetectUpdateProcessorFactory extends UpdateRequestProces
     return new OpenNLPLangDetectUpdateProcessor(req, rsp, next, model);
   }
 
-  @SuppressWarnings("deprecation")
   private void loadModel() throws IOException {
     InputStream is = null;
     try{

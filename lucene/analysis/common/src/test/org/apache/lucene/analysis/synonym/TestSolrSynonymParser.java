@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
  * Tests parser for the Solr synonyms format
  * @lucene.experimental
  */
+@Deprecated
 public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   
   /** Tests some simple examples from the solr wiki */
@@ -47,7 +48,6 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
     analyzer.close();
     
     analyzer = new Analyzer() {
-      @SuppressWarnings("deprecation")
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
         Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);
@@ -139,7 +139,6 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
     final SynonymMap map = parser.build();
     analyzer.close();
     analyzer = new Analyzer() {
-      @SuppressWarnings("deprecation")
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
         Tokenizer tokenizer = new MockTokenizer(MockTokenizer.KEYWORD, false);
@@ -173,7 +172,6 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
     analyzer.close();
 
     analyzer = new Analyzer() {
-      @SuppressWarnings("deprecation")
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
         Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, true);

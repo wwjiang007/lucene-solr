@@ -57,6 +57,23 @@ import org.apache.lucene.search.PhraseQuery;
 @Deprecated
 public class WordDelimiterFilterFactory extends TokenFilterFactory implements ResourceLoaderAware {
 
+  private static final int CATENATE_ALL = WordDelimiterFilter.CATENATE_ALL;
+  private static final int CATENATE_NUMBERS = WordDelimiterFilter.CATENATE_NUMBERS;
+  private static final int CATENATE_WORDS = WordDelimiterFilter.CATENATE_WORDS;
+  private static final int GENERATE_NUMBER_PARTS = WordDelimiterFilter.GENERATE_NUMBER_PARTS;
+  private static final int GENERATE_WORD_PARTS = WordDelimiterFilter.GENERATE_WORD_PARTS;
+  private static final int PRESERVE_ORIGINAL = WordDelimiterFilter.PRESERVE_ORIGINAL;
+  private static final int SPLIT_ON_CASE_CHANGE = WordDelimiterFilter.SPLIT_ON_CASE_CHANGE;
+  private static final int SPLIT_ON_NUMERICS = WordDelimiterFilter.SPLIT_ON_NUMERICS;
+  private static final int STEM_ENGLISH_POSSESSIVE = WordDelimiterFilter.STEM_ENGLISH_POSSESSIVE;
+  private static final int ALPHA = WordDelimiterFilter.ALPHA;
+  private static final int ALPHANUM = WordDelimiterFilter.ALPHANUM;
+  private static final int DIGIT = WordDelimiterFilter.DIGIT;
+  private static final int LOWER = WordDelimiterFilter.LOWER;
+  private static final int SUBWORD_DELIM = WordDelimiterFilter.SUBWORD_DELIM;
+  private static final int UPPER = WordDelimiterFilter.UPPER;
+
+
   /** SPI name */
   public static final String NAME = "wordDelimiter";
 
@@ -74,31 +91,31 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
     super(args);
     int flags = 0;
     if (getInt(args, "generateWordParts", 1) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.GENERATE_WORD_PARTS;
+      flags |= GENERATE_WORD_PARTS;
     }
     if (getInt(args, "generateNumberParts", 1) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.GENERATE_NUMBER_PARTS;
+      flags |= GENERATE_NUMBER_PARTS;
     }
     if (getInt(args, "catenateWords", 0) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.CATENATE_WORDS;
+      flags |= CATENATE_WORDS;
     }
     if (getInt(args, "catenateNumbers", 0) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.CATENATE_NUMBERS;
+      flags |= CATENATE_NUMBERS;
     }
     if (getInt(args, "catenateAll", 0) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.CATENATE_ALL;
+      flags |= CATENATE_ALL;
     }
     if (getInt(args, "splitOnCaseChange", 1) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.SPLIT_ON_CASE_CHANGE;
+      flags |= SPLIT_ON_CASE_CHANGE;
     }
     if (getInt(args, "splitOnNumerics", 1) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.SPLIT_ON_NUMERICS;
+      flags |= SPLIT_ON_NUMERICS;
     }
     if (getInt(args, "preserveOriginal", 0) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.PRESERVE_ORIGINAL;
+      flags |= PRESERVE_ORIGINAL;
     }
     if (getInt(args, "stemEnglishPossessive", 1) != 0) {
-      flags |= org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.STEM_ENGLISH_POSSESSIVE;
+      flags |= STEM_ENGLISH_POSSESSIVE;
     }
     wordFiles = get(args, PROTECTED_TOKENS);
     types = get(args, TYPES);
@@ -108,6 +125,11 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
     }
   }
   
+  /** Default ctor for compatibility with SPI */
+  public WordDelimiterFilterFactory() {
+    throw defaultCtorException();
+  }
+
   @Override
   public void inform(ResourceLoader loader) throws IOException {
     if (wordFiles != null) {  
@@ -160,17 +182,17 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
   
   private Byte parseType(String s) {
     if (s.equals("LOWER"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.LOWER;
+      return LOWER;
     else if (s.equals("UPPER"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.UPPER;
+      return UPPER;
     else if (s.equals("ALPHA"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.ALPHA;
+      return ALPHA;
     else if (s.equals("DIGIT"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.DIGIT;
+      return DIGIT;
     else if (s.equals("ALPHANUM"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.ALPHANUM;
+      return ALPHANUM;
     else if (s.equals("SUBWORD_DELIM"))
-      return org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.SUBWORD_DELIM;
+      return SUBWORD_DELIM;
     else
       return null;
   }

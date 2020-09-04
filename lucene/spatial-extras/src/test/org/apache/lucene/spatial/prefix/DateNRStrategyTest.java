@@ -38,11 +38,10 @@ public class DateNRStrategyTest extends RandomSpatialOpStrategyTestCase {
 
   long randomCalWindowMs;
 
-  @SuppressWarnings("deprecation")
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    tree = DateRangePrefixTree.INSTANCE;
+    tree = new DateRangePrefixTree(DateRangePrefixTree.DEFAULT_CAL);
     strategy = new NumberRangePrefixTreeStrategy(tree, "dateRange");
     ((NumberRangePrefixTreeStrategy)strategy).setPointsOnly(randomInt() % 5 == 0);
     Calendar tmpCal = tree.newCal();

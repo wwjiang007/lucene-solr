@@ -40,7 +40,6 @@ public class CloudSolrClientRetryTest extends SolrCloudTestCase {
   }
 
   @Test
-  @SuppressWarnings("deprecation")
   public void testRetry() throws Exception {
     String collectionName = "testRetry";
     CloudSolrClient solrClient = cluster.getSolrClient();
@@ -58,6 +57,7 @@ public class CloudSolrClientRetryTest extends SolrCloudTestCase {
     QueryResponse response = solrClient.query(collectionName, params, SolrRequest.METHOD.GET);
     NamedList<Object> namedList = response.getResponse();
     System.out.println(namedList);
+    @SuppressWarnings({"rawtypes"})
     NamedList metrics = (NamedList) namedList.get("metrics");
     assertEquals(1L, metrics.get(updateRequestCountKey));
 

@@ -74,11 +74,11 @@ public interface IteratorWriter {
       return this;
     }
   }
+  @SuppressWarnings({"unchecked", "rawtypes"})
   default List toList( List l)  {
     try {
       writeIter(new ItemWriter() {
         @Override
-        @SuppressWarnings("unchecked")
         public ItemWriter add(Object o) throws IOException {
           if (o instanceof MapWriter) o = ((MapWriter) o).toMap(new LinkedHashMap<>());
           if (o instanceof IteratorWriter) o = ((IteratorWriter) o).toList(new ArrayList<>());

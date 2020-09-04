@@ -210,12 +210,11 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
     assertFalse(query3.equals(query4));
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   public void testRewrite() throws IOException {
-    SpanMultiTermQueryWrapper fiv = new SpanMultiTermQueryWrapper(new WildcardQuery(new Term("field", "fiv*")));
-    SpanMultiTermQueryWrapper hund = new SpanMultiTermQueryWrapper(new WildcardQuery(new Term("field", "hund*")));
-    SpanMultiTermQueryWrapper twent = new SpanMultiTermQueryWrapper(new WildcardQuery(new Term("field", "twent*")));
-    SpanMultiTermQueryWrapper nin = new SpanMultiTermQueryWrapper(new WildcardQuery(new Term("field", "nin*")));
+    SpanMultiTermQueryWrapper<WildcardQuery> fiv = new SpanMultiTermQueryWrapper<>(new WildcardQuery(new Term("field", "fiv*")));
+    SpanMultiTermQueryWrapper<WildcardQuery> hund = new SpanMultiTermQueryWrapper<>(new WildcardQuery(new Term("field", "hund*")));
+    SpanMultiTermQueryWrapper<WildcardQuery> twent = new SpanMultiTermQueryWrapper<>(new WildcardQuery(new Term("field", "twent*")));
+    SpanMultiTermQueryWrapper<WildcardQuery> nin = new SpanMultiTermQueryWrapper<>(new WildcardQuery(new Term("field", "nin*")));
 
     SpanNearQuery sq = new SpanNearQuery(new SpanQuery[] {fiv, hund, twent, nin}, 0, true);
 

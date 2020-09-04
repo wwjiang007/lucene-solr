@@ -461,19 +461,20 @@ public class ExtractingRequestHandlerTest extends SolrTestCaseJ4 {
   // Note: If you load a plain text file specifying neither MIME type nor filename, extraction will silently fail. This is because Tika's
   // automatic MIME type detection will fail, and it will default to using an empty-string-returning default parser
 
-  @SuppressWarnings("rawtypes")
   @Test
   public void testExtractOnly() throws Exception {
     ExtractingRequestHandler handler = (ExtractingRequestHandler) h.getCore().getRequestHandler("/update/extract");
     assertTrue("handler is null and it shouldn't be", handler != null);
     SolrQueryResponse rsp = loadLocal("extraction/solr-word.pdf", ExtractingParams.EXTRACT_ONLY, "true");
     assertTrue("rsp is null and it shouldn't be", rsp != null);
+    @SuppressWarnings({"rawtypes"})
     NamedList list = rsp.getValues();
 
     String extraction = (String) list.get("solr-word.pdf");
     assertTrue("extraction is null and it shouldn't be", extraction != null);
     assertTrue(extraction + " does not contain " + "solr-word", extraction.indexOf("solr-word") != -1);
 
+    @SuppressWarnings({"rawtypes"})
     NamedList nl = (NamedList) list.get("solr-word.pdf_metadata");
     assertTrue("nl is null and it shouldn't be", nl != null);
     Object title = nl.get("title");
@@ -499,7 +500,6 @@ public class ExtractingRequestHandlerTest extends SolrTestCaseJ4 {
 
   }
 
-  @SuppressWarnings("rawtypes")
   @Test
   public void testXPath() throws Exception {
     ExtractingRequestHandler handler = (ExtractingRequestHandler) h.getCore().getRequestHandler("/update/extract");
@@ -509,6 +509,7 @@ public class ExtractingRequestHandlerTest extends SolrTestCaseJ4 {
             ExtractingParams.EXTRACT_ONLY, "true"
     );
     assertTrue("rsp is null and it shouldn't be", rsp != null);
+    @SuppressWarnings({"rawtypes"})
     NamedList list = rsp.getValues();
     String val = (String) list.get("example.html");
     assertEquals("News", val.trim()); //there is only one matching <a> tag

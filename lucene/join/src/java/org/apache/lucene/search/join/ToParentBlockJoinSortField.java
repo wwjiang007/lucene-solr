@@ -30,6 +30,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.NumericUtils;
 
+import static org.apache.lucene.search.join.BlockJoinSelector.toIter;
+
 /**
  * A special sort field that allows sorting parent docs based on nested / child level fields.
  * Based on the sort order it either takes the document with the lowest or highest field value into account.
@@ -107,7 +109,6 @@ public class ToParentBlockJoinSortField extends SortField {
   private FieldComparator<?> getStringComparator(int numHits) {
     return new FieldComparator.TermOrdValComparator(numHits, getField(), missingValue == STRING_LAST) {
 
-      @SuppressWarnings("deprecation")
       @Override
       protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field) throws IOException {
         SortedSetDocValues sortedSet = DocValues.getSortedSet(context.reader(), field);
@@ -119,7 +120,7 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptySorted();
         }
-        return BlockJoinSelector.wrap(sortedSet, type, parents, children);
+        return BlockJoinSelector.wrap(sortedSet, type, parents, toIter(children));
       }
 
     };
@@ -127,7 +128,6 @@ public class ToParentBlockJoinSortField extends SortField {
 
   private FieldComparator<?> getIntComparator(int numHits) {
     return new FieldComparator.IntComparator(numHits, getField(), (Integer) missingValue) {
-      @SuppressWarnings("deprecation")
       @Override
       protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field) throws IOException {
         SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), field);
@@ -139,14 +139,13 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptyNumeric();
         }
-        return BlockJoinSelector.wrap(sortedNumeric, type, parents, children);
+        return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
       }
     };
   }
 
   private FieldComparator<?> getLongComparator(int numHits) {
     return new FieldComparator.LongComparator(numHits, getField(), (Long) missingValue) {
-      @SuppressWarnings("deprecation")
       @Override
       protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field) throws IOException {
         SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), field);
@@ -158,14 +157,13 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptyNumeric();
         }
-        return BlockJoinSelector.wrap(sortedNumeric, type, parents, children);
+        return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
       }
     };
   }
 
   private FieldComparator<?> getFloatComparator(int numHits) {
     return new FieldComparator.FloatComparator(numHits, getField(), (Float) missingValue) {
-      @SuppressWarnings("deprecation")
       @Override
       protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field) throws IOException {
         SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), field);
@@ -177,7 +175,7 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptyNumeric();
         }
-        return new FilterNumericDocValues(BlockJoinSelector.wrap(sortedNumeric, type, parents, children)) {
+        return new FilterNumericDocValues(BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children))) {
           @Override
           public long longValue() throws IOException {
             // undo the numericutils sortability
@@ -190,7 +188,6 @@ public class ToParentBlockJoinSortField extends SortField {
 
   private FieldComparator<?> getDoubleComparator(int numHits) {
     return new FieldComparator.DoubleComparator(numHits, getField(), (Double) missingValue) {
-      @SuppressWarnings("deprecation")
       @Override
       protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field) throws IOException {
         SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), field);
@@ -202,7 +199,7 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptyNumeric();
         }
-        return new FilterNumericDocValues(BlockJoinSelector.wrap(sortedNumeric, type, parents, children)) {
+        return new FilterNumericDocValues(BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children))) {
           @Override
           public long longValue() throws IOException {
             // undo the numericutils sortability

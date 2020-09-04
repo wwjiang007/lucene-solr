@@ -20,7 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 
-/** 
+
+/**
  * Tests that the {@link BaseExplanationTestCase} helper code, as well as 
  * {@link CheckHits#checkNoMatchExplanations} are checking what they are suppose to.
  */

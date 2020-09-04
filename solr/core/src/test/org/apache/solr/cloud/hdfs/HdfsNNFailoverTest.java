@@ -19,8 +19,8 @@ package org.apache.solr.cloud.hdfs;
 import java.io.IOException;
 
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.lucene.util.QuickPatchThreadsFilter;
 import org.apache.lucene.util.LuceneTestCase.Slow;
+import org.apache.lucene.util.QuickPatchThreadsFilter;
 import org.apache.solr.SolrIgnoredThreadsFilter;
 import org.apache.solr.cloud.BasicDistributedZkTest;
 import org.apache.solr.util.BadHdfsThreadsFilter;
@@ -71,7 +71,7 @@ public class HdfsNNFailoverTest extends BasicDistributedZkTest {
 
   @Test
   public void test() throws Exception {
-    createCollection(COLLECTION, "conf1", 1, 1, 1);
+    createCollection(COLLECTION, "conf1", 1, 1);
     
     waitForRecoveriesToFinish(COLLECTION, false);
     

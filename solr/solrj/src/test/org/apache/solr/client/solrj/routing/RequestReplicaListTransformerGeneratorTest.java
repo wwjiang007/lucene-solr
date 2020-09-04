@@ -84,7 +84,20 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
                 ZkStateReader.NODE_NAME_PROP, "node4",
                 ZkStateReader.CORE_NAME_PROP, "collection1",
                 ZkStateReader.REPLICA_TYPE, "TLOG"
-            )
+            ), "c1","s1"
+        )
+    );
+
+    // Add a PULL replica so that there's a tie for "last place"
+    replicas.add(
+        new Replica(
+            "node5",
+            map(
+                ZkStateReader.BASE_URL_PROP, "http://host2_2:8983/solr",
+                ZkStateReader.NODE_NAME_PROP, "node5",
+                ZkStateReader.CORE_NAME_PROP, "collection1",
+                ZkStateReader.REPLICA_TYPE, "PULL"
+            ), "c1","s1"
         )
     );
 
@@ -101,6 +114,7 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
     assertEquals("node2", replicas.get(1).getNodeName());
     assertEquals("node4", replicas.get(2).getNodeName());
     assertEquals("node3", replicas.get(3).getNodeName());
+    assertEquals("node5", replicas.get(4).getNodeName());
 
     params.set("routingPreference", "1");
     rlt = generator.getReplicaListTransformer(params);
@@ -108,7 +122,8 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
     assertEquals("node1", replicas.get(0).getNodeName());
     assertEquals("node4", replicas.get(1).getNodeName());
     assertEquals("node2", replicas.get(2).getNodeName());
-    assertEquals("node3", replicas.get(3).getNodeName());
+    assertEquals("node5", replicas.get(3).getNodeName());
+    assertEquals("node3", replicas.get(4).getNodeName());
   }
 
   @SuppressWarnings("unchecked")
@@ -122,7 +137,7 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
                 ZkStateReader.NODE_NAME_PROP, "node1",
                 ZkStateReader.CORE_NAME_PROP, "collection1",
                 ZkStateReader.REPLICA_TYPE, "NRT"
-            )
+            ),"c1","s1"
         )
     );
     replicas.add(
@@ -133,7 +148,7 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
                 ZkStateReader.NODE_NAME_PROP, "node2",
                 ZkStateReader.CORE_NAME_PROP, "collection1",
                 ZkStateReader.REPLICA_TYPE, "TLOG"
-            )
+            ),"c1","s1"
         )
     );
     replicas.add(
@@ -144,7 +159,7 @@ public class RequestReplicaListTransformerGeneratorTest extends SolrTestCaseJ4 {
                 ZkStateReader.NODE_NAME_PROP, "node3",
                 ZkStateReader.CORE_NAME_PROP, "collection1",
                 ZkStateReader.REPLICA_TYPE, "PULL"
-            )
+            ),"c1","s1"
         )
     );
     return replicas;

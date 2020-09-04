@@ -67,7 +67,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
   protected boolean storeShape = true;
 
   protected void executeQueries(SpatialMatchConcern concern, String... testQueryFile) throws IOException {
-    log.info("testing queried for strategy "+strategy);
+    log.info("testing queried for strategy "+strategy); // logOk
     for( String path : testQueryFile ) {
       Iterator<SpatialTestQuery> testQueryIterator = getTestQueries(path, ctx);
       runTestQueries(testQueryIterator, concern);
@@ -184,7 +184,6 @@ public abstract class StrategyTestCase extends SpatialTestCase {
     return strategy.makeQuery(q.args);
   }
 
-  @SuppressWarnings("deprecation")
   protected void adoc(String id, String shapeStr) throws IOException, ParseException {
     Shape shape = shapeStr==null ? null : ctx.readShapeFromWkt(shapeStr);
     addDocument(newDoc(id, shape));

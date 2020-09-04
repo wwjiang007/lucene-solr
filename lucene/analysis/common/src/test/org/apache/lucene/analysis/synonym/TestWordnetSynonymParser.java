@@ -36,7 +36,8 @@ public class TestWordnetSynonymParser extends BaseTokenStreamTestCase {
     "s(100000003,2,'baron',n,1,1).\n" +
     "s(100000004,1,'king''s evil',n,1,1).\n" +
     "s(100000004,2,'king''s meany',n,1,1).\n";
-  
+
+  @SuppressWarnings("deprecation")
   public void testSynonyms() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     WordnetSynonymParser parser = new WordnetSynonymParser(true, true, analyzer);
@@ -45,7 +46,6 @@ public class TestWordnetSynonymParser extends BaseTokenStreamTestCase {
     analyzer.close();
     
     analyzer = new Analyzer() {
-      @SuppressWarnings("deprecation")
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
         Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);

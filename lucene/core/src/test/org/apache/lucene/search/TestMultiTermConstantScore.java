@@ -28,6 +28,7 @@ import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -41,9 +42,8 @@ public class TestMultiTermConstantScore extends BaseTestRangeFilter {
   static Directory small;
   static IndexReader reader;
 
-  @SuppressWarnings("deprecation")
   static public void assertEquals(String m, int e, int a) {
-    junit.framework.Assert.assertEquals(m, e, a);
+    Assert.assertEquals(m, e, a);
   }
 
   @BeforeClass

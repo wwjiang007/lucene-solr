@@ -406,6 +406,7 @@ public class TestGrouping extends LuceneTestCase {
     };
   }
 
+  @SuppressWarnings({"unchecked","rawtypes"})
   private Comparable<?>[] fillFields(GroupDoc d, Sort sort) {
     final SortField[] sortFields = sort.getSort();
     final Comparable<?>[] fields = new Comparable[sortFields.length];
@@ -491,7 +492,7 @@ public class TestGrouping extends LuceneTestCase {
     final int limit = Math.min(groupOffset + topNGroups, groups.size());
 
     final Comparator<GroupDoc> docSortComp = getComparator(docSort);
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({"unchecked","rawtypes"})
     final GroupDocs<BytesRef>[] result = new GroupDocs[limit-groupOffset];
     int totalGroupedHitCount = 0;
     for(int idx=groupOffset;idx < limit;idx++) {
@@ -618,13 +619,13 @@ public class TestGrouping extends LuceneTestCase {
   }
 
   public void testRandom() throws Exception {
-    int numberOfRuns = TestUtil.nextInt(random(), 3, 6);
+    int numberOfRuns = atLeast(1);
     for (int iter=0; iter<numberOfRuns; iter++) {
       if (VERBOSE) {
         System.out.println("TEST: iter=" + iter);
       }
 
-      final int numDocs = TestUtil.nextInt(random(), 100, 1000) * RANDOM_MULTIPLIER;
+      final int numDocs = atLeast(100);
       //final int numDocs = _TestUtil.nextInt(random, 5, 20);
 
       final int numGroups = TestUtil.nextInt(random(), 1, numDocs);
@@ -1043,7 +1044,7 @@ public class TestGrouping extends LuceneTestCase {
         }
         // Get block grouping result:
         sBlocks.search(query, c4);
-        @SuppressWarnings({"unchecked"})
+        @SuppressWarnings({"unchecked","rawtypes"})
         final TopGroups<BytesRef> tempTopGroupsBlocks = (TopGroups<BytesRef>) c3.getTopGroups(docSort, groupOffset, docOffset, docOffset+docsPerGroup);
         final TopGroups<BytesRef> groupsResultBlocks;
         if (doAllGroups && tempTopGroupsBlocks != null) {
@@ -1199,7 +1200,7 @@ public class TestGrouping extends LuceneTestCase {
 
     if (mergedTopGroups != null) {
       // Now 2nd pass:
-      @SuppressWarnings({"unchecked"})
+      @SuppressWarnings({"unchecked","rawtypes"})
       final TopGroups<BytesRef>[] shardTopGroups = new TopGroups[subSearchers.length];
       for(int shardIDX=0;shardIDX<subSearchers.length;shardIDX++) {
         final TopGroupsCollector<?> secondPassCollector = createSecondPassCollector(firstPassGroupingCollectors.get(shardIDX),

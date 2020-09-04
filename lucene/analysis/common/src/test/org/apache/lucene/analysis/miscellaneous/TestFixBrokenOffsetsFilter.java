@@ -29,9 +29,9 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.store.Directory;
 
+@Deprecated
 public class TestFixBrokenOffsetsFilter extends BaseTokenStreamTestCase {
 
-  @SuppressWarnings("deprecation")
   public void testBogusTermVectors() throws IOException {
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null));

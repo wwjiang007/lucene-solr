@@ -62,6 +62,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ValidatingTokenFilter;
+import org.apache.lucene.analysis.boost.DelimitedBoostTokenFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.analysis.cjk.CJKBigramFilter;
 import org.apache.lucene.analysis.commongrams.CommonGramsFilter;
@@ -82,6 +83,7 @@ import org.apache.lucene.analysis.miscellaneous.LimitTokenOffsetFilter;
 import org.apache.lucene.analysis.miscellaneous.LimitTokenPositionFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter;
 import org.apache.lucene.analysis.miscellaneous.StemmerOverrideFilter.StemmerOverrideMap;
+import org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter;
 import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
 import org.apache.lucene.analysis.path.PathHierarchyTokenizer;
 import org.apache.lucene.analysis.path.ReversePathHierarchyTokenizer;
@@ -107,11 +109,10 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.tartarus.snowball.SnowballProgram;
+import org.tartarus.snowball.SnowballStemmer;
 import org.xml.sax.InputSource;
 
 /** tests random analysis chains */
-@SuppressWarnings("deprecation")
 public class TestRandomChains extends BaseTokenStreamTestCase {
 
   static List<Constructor<? extends Tokenizer>> tokenizers;
@@ -141,7 +142,9 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
   }
 
   private static final Map<Constructor<?>,Predicate<Object[]>> brokenConstructors = new HashMap<>();
-  static {
+  static {  initBrokenConstructors(); }
+  @SuppressWarnings("deprecation")
+  private static void initBrokenConstructors() {
     try {
       brokenConstructors.put(
           LimitTokenCountFilter.class.getConstructor(TokenStream.class, int.class),
@@ -193,11 +196,13 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           // TODO: it seems to mess up offsets!?
           WikipediaTokenizer.class,
           // TODO: needs to be a tokenizer, doesnt handle graph inputs properly (a shingle or similar following will then cause pain)
-          org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.class,
+          WordDelimiterFilter.class,
           // Cannot correct offsets when a char filter had changed them:
           WordDelimiterGraphFilter.class,
           // requires a special encoded token value, so it may fail with random data:
           DelimitedTermFrequencyTokenFilter.class,
+          // requires a special encoded token value, so it may fail with random data:
+          DelimitedBoostTokenFilter.class,
           // clones of core's filters:
           org.apache.lucene.analysis.core.StopFilter.class,
           org.apache.lucene.analysis.core.LowerCaseFilter.class)) {
@@ -321,7 +326,6 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
     }
   }
   
-  @SuppressWarnings("serial")
   private static final Map<Class<?>,Function<Random,Object>> argProducers = new IdentityHashMap<Class<?>,Function<Random,Object>>() {{
     put(int.class, random ->  {
         // TODO: could cause huge ram usage to use full int range for some filters
@@ -405,10 +409,10 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
           return null; // unreachable code
         }
     });
-    put(SnowballProgram.class, random ->  {
+    put(SnowballStemmer.class, random ->  {
         try {
-          String lang = TestSnowball.SNOWBALL_LANGS[random.nextInt(TestSnowball.SNOWBALL_LANGS.length)];
-          Class<? extends SnowballProgram> clazz = Class.forName("org.tartarus.snowball.ext." + lang + "Stemmer").asSubclass(SnowballProgram.class);
+          String lang = TestSnowball.SNOWBALL_LANGS.get(random.nextInt(TestSnowball.SNOWBALL_LANGS.size()));
+          Class<? extends SnowballStemmer> clazz = Class.forName("org.tartarus.snowball.ext." + lang + "Stemmer").asSubclass(SnowballStemmer.class);
           return clazz.getConstructor().newInstance();
         } catch (Exception ex) {
           Rethrow.rethrow(ex);

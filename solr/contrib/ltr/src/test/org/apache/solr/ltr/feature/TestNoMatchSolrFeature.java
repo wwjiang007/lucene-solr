@@ -83,7 +83,6 @@ public class TestNoMatchSolrFeature extends TestRerankBase {
     aftertest();
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void test2NoMatch1YesMatchFeatureReturnsFvWith1FeatureAndDocScoreScaledByModel() throws Exception {
     // Tests model with all no matching features but 1
@@ -101,8 +100,10 @@ public class TestNoMatchSolrFeature extends TestRerankBase {
     String res = restTestHarness.query("/query"
         + yesMatchFeatureQuery.toQueryString());
 
+    @SuppressWarnings({"unchecked"})
     final Map<String,Object> jsonParse = (Map<String,Object>) Utils
         .fromJSONString(res);
+    @SuppressWarnings({"unchecked"})
     final Double doc0Score = (Double) ((Map<String,Object>) ((ArrayList<Object>) ((Map<String,Object>) jsonParse
         .get("response")).get("docs")).get(0)).get("score");
 
@@ -150,7 +151,6 @@ public class TestNoMatchSolrFeature extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(), "/response/docs/[3]/fv=='"+docs3fv_default_csv+"'");
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   public void test1NoMatchFeatureReturnsFvWith1MatchingFeatureFromStoreAndDocWith0Score() throws Exception {
     // Tests model with all no matching features, but 1 feature store feature matching for extraction
@@ -167,8 +167,10 @@ public class TestNoMatchSolrFeature extends TestRerankBase {
     String res = restTestHarness.query("/query"
         + yesMatchFeatureQuery.toQueryString());
 
+    @SuppressWarnings({"unchecked"})
     final Map<String,Object> jsonParse = (Map<String,Object>) Utils
         .fromJSONString(res);
+    @SuppressWarnings({"unchecked"})
     final Double doc0Score = (Double) ((Map<String,Object>) ((ArrayList<Object>) ((Map<String,Object>) jsonParse
         .get("response")).get("docs")).get(0)).get("score");
 

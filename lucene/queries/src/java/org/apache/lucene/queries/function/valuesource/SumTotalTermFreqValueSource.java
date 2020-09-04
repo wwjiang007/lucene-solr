@@ -47,15 +47,13 @@ public class SumTotalTermFreqValueSource extends ValueSource {
     return name() + '(' + indexedField + ')';
   }
 
-  @SuppressWarnings("rawtypes")
   @Override
-  public FunctionValues getValues(Map context, LeafReaderContext readerContext) throws IOException {
+  public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext) throws IOException {
     return (FunctionValues)context.get(this);
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
-  public void createWeight(Map context, IndexSearcher searcher) throws IOException {
+  public void createWeight(Map<Object, Object> context, IndexSearcher searcher) throws IOException {
     long sumTotalTermFreq = 0;
     for (LeafReaderContext readerContext : searcher.getTopReaderContext().leaves()) {
       Terms terms = readerContext.reader().terms(indexedField);

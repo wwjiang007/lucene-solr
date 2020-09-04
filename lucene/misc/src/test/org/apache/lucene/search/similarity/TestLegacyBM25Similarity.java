@@ -23,7 +23,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BaseSimilarityTestCase;
 import org.apache.lucene.search.similarities.Similarity;
 
-@SuppressWarnings("deprecation")
+@Deprecated
 public class TestLegacyBM25Similarity extends BaseSimilarityTestCase {
 
   public void testIllegalK1() {

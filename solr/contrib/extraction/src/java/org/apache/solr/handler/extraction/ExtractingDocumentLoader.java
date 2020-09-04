@@ -51,6 +51,10 @@ import org.apache.tika.sax.XHTMLContentHandler;
 import org.apache.tika.sax.xpath.Matcher;
 import org.apache.tika.sax.xpath.MatchingContentHandler;
 import org.apache.tika.sax.xpath.XPathParser;
+import org.apache.xml.serialize.BaseMarkupSerializer;
+import org.apache.xml.serialize.OutputFormat;
+import org.apache.xml.serialize.TextSerializer;
+import org.apache.xml.serialize.XMLSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.ContentHandler;
@@ -127,8 +131,8 @@ public class ExtractingDocumentLoader extends ContentStreamLoader {
     doAdd(handler, templateAdd);
   }
 
-  @SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
   @Override
+  @SuppressWarnings({"unchecked"})
   public void load(SolrQueryRequest req, SolrQueryResponse rsp,
       ContentStream stream, UpdateRequestProcessor processor) throws Exception {
     Parser parser = null;
@@ -173,16 +177,16 @@ public class ExtractingDocumentLoader extends ContentStreamLoader {
         ContentHandler parsingHandler = handler;
 
         StringWriter writer = null;
-        org.apache.xml.serialize.BaseMarkupSerializer serializer = null;
+        BaseMarkupSerializer serializer = null;
         if (extractOnly == true) {
           String extractFormat = params.get(ExtractingParams.EXTRACT_FORMAT, "xml");
           writer = new StringWriter();
           if (extractFormat.equals(TEXT_FORMAT)) {
-            serializer = new org.apache.xml.serialize.TextSerializer();
+            serializer = new TextSerializer();
             serializer.setOutputCharStream(writer);
-            serializer.setOutputFormat(new org.apache.xml.serialize.OutputFormat("Text", "UTF-8", true));
+            serializer.setOutputFormat(new OutputFormat("Text", "UTF-8", true));
           } else {
-            serializer = new org.apache.xml.serialize.XMLSerializer(writer, new org.apache.xml.serialize.OutputFormat("XML", "UTF-8", true));
+            serializer = new XMLSerializer(writer, new OutputFormat("XML", "UTF-8", true));
           }
           if (xpathExpr != null) {
             Matcher matcher =
@@ -212,7 +216,7 @@ public class ExtractingDocumentLoader extends ContentStreamLoader {
           if(pwMapFile != null && pwMapFile.length() > 0) {
             InputStream is = req.getCore().getResourceLoader().openResource(pwMapFile);
             if(is != null) {
-              log.debug("Password file supplied: "+pwMapFile);
+              log.debug("Password file supplied: {}", pwMapFile);
               epp.parse(is);
             }
           }
@@ -220,13 +224,13 @@ public class ExtractingDocumentLoader extends ContentStreamLoader {
           String resourcePassword = params.get(ExtractingParams.RESOURCE_PASSWORD);
           if(resourcePassword != null) {
             epp.setExplicitPassword(resourcePassword);
-            log.debug("Literal password supplied for file "+resourceName);
+            log.debug("Literal password supplied for file {}", resourceName);
           }
           parser.parse(inputStream, parsingHandler, metadata, context);
         } catch (TikaException e) {
           if(ignoreTikaException)
             log.warn(new StringBuilder("skip extracting text due to ").append(e.getLocalizedMessage())
-                .append(". metadata=").append(metadata.toString()).toString());
+                .append(". metadata=").append(metadata.toString()).toString()); // logOk
           else
             throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
         }
@@ -240,6 +244,7 @@ public class ExtractingDocumentLoader extends ContentStreamLoader {
           rsp.add(stream.getName(), writer.toString());
           writer.close();
           String[] names = metadata.names();
+          @SuppressWarnings({"rawtypes"})
           NamedList metadataNL = new NamedList();
           for (int i = 0; i < names.length; i++) {
             String[] vals = metadata.getValues(names[i]);
